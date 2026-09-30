@@ -7,6 +7,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# public/ is optional (git doesn't keep an empty folder), but the runtime stage copies it.
+RUN mkdir -p public
 # The `/api/*` rewrite destination is serialized into the build output (routes manifest),
 # so the backend address is needed at build time, not only at runtime.
 ARG BACKEND_URL=http://backend:3000
