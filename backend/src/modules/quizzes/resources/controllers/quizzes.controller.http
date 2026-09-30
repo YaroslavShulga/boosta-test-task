@@ -1,0 +1,4 @@
+@baseUrl = http://localhost:3000
+
+### Current published quiz (questions + options)
+GET {{baseUrl}}/quizzes/current

@@ -1,0 +1,15 @@
+FROM node:22-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+EXPOSE 3001
+
+# Webpack instead of Turbopack: see the WATCHPACK_POLLING note in docker-compose.dev.yml.
+CMD ["npm", "run", "dev:docker"]

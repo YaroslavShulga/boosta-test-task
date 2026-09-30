@@ -1,0 +1,43 @@
+@baseUrl = http://localhost:3000
+
+### Sign up (links the anonymous attempt from the attempt_token cookie)
+POST {{baseUrl}}/auth/sign-up
+Content-Type: application/json
+
+{
+  "email": "jane@example.com",
+  "password": "password123"
+}
+
+### Sign up again with the same email -> 409 EMAIL_TAKEN
+POST {{baseUrl}}/auth/sign-up
+Content-Type: application/json
+
+{
+  "email": "jane@example.com",
+  "password": "password123"
+}
+
+### Sign in
+POST {{baseUrl}}/auth/sign-in
+Content-Type: application/json
+
+{
+  "email": "jane@example.com",
+  "password": "password123"
+}
+
+### Wrong password -> 401 INVALID_CREDENTIALS
+POST {{baseUrl}}/auth/sign-in
+Content-Type: application/json
+
+{
+  "email": "jane@example.com",
+  "password": "wrong-password"
+}
+
+### Current user
+GET {{baseUrl}}/auth/me
+
+### Sign out
+POST {{baseUrl}}/auth/sign-out

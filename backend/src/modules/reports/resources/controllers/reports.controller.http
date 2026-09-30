@@ -1,0 +1,9 @@
+@baseUrl = http://localhost:3000
+# Requires the access_token cookie (sign in via auth.controller.http first).
+@attemptId = 00000000-0000-0000-0000-000000000000
+
+### Report for the current result
+GET {{baseUrl}}/reports/current
+
+### Report for an earlier attempt
+GET {{baseUrl}}/reports/{{attemptId}}

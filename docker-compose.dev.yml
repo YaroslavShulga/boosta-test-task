@@ -1,0 +1,84 @@
+# Local development stack: frontend + backend with hot reload, plus Postgres.
+# Usage: docker compose -f docker-compose.dev.yml up --build
+name: boosta-dev
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres_boosta
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-app}
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    volumes:
+      - postgres_data_boosta:/var/lib/postgresql/data
+    healthcheck:
+      test: [ 'CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}' ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: backend_boosta
+    # Optional: extra/override settings from backend/.env (see backend/.env.example).
+    env_file:
+      - path: ./backend/.env
+        required: false
+    # Values below take precedence over backend/.env.
+    environment:
+      PORT: 3000
+      # Inside the compose network Postgres is reachable by service name on its container port.
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-app}
+      DB_MIGRATIONS_RUN: 'true'
+      JWT_SECRET: ${JWT_SECRET:-dev-only-jwt-secret-change-me}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
+      COOKIE_SECURE: 'false'
+      COOKIE_SAMESITE: lax
+      # File-change events don't reach the container through bind mounts from
+      # Windows/WSL (/mnt/*) or macOS drives, so the TypeScript watcher polls.
+      TSC_WATCHFILE: PriorityPollingInterval
+      TSC_WATCHDIRECTORY: RecursiveDirectoryUsingFsWatchFile
+    ports:
+      - '${BACKEND_PORT:-3000}:3000'
+    volumes:
+      - ./backend:/app
+      # Keep the image's node_modules: native modules (argon2) must be built for Alpine/musl.
+      # With the host's node_modules, argon2 segfaults on the first sign-up/sign-in.
+      # After dependency changes: docker compose -f docker-compose.dev.yml up --build --renew-anon-volumes
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: frontend_boosta
+    environment:
+      # `/api/*` rewrites and Server Component fetches reach the API by service name.
+      BACKEND_URL: http://backend:3000
+      # File-change events don't reach the container through bind mounts from
+      # Windows/WSL (/mnt/*) or macOS drives, so the dev server has to poll. The container
+      # runs `next dev --webpack` (npm run dev:docker): Turbopack's poll watcher floods the
+      # log with "watch error ... No such file or directory" for paths it probes but that
+      # don't exist, while webpack's watchpack polls quietly.
+      WATCHPACK_POLLING: 'true'
+    ports:
+      - '${FRONTEND_PORT:-3001}:3001'
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data_boosta:

@@ -1,0 +1,31 @@
+@baseUrl = http://localhost:3000
+# Cookies (attempt_token / access_token) are kept between requests by the HTTP client.
+# Take ids from GET /quizzes/current and from the responses below.
+@attemptId = 00000000-0000-0000-0000-000000000000
+@questionId = 00000000-0000-0000-0000-000000000000
+@optionId = 00000000-0000-0000-0000-000000000000
+
+### Start an attempt (anonymous or signed in)
+POST {{baseUrl}}/attempts
+Content-Type: application/json
+
+{
+  "gender": "female"
+}
+
+### Resume: the unfinished attempt of this browser/user
+GET {{baseUrl}}/attempts/in-progress
+
+### Answer (or change the answer to) a question
+PUT {{baseUrl}}/attempts/{{attemptId}}/answers/{{questionId}}
+Content-Type: application/json
+
+{
+  "optionId": "{{optionId}}"
+}
+
+### Finish the attempt
+POST {{baseUrl}}/attempts/{{attemptId}}/complete
+
+### Completed attempts of the signed-in user
+GET {{baseUrl}}/attempts

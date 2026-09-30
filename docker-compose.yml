@@ -1,0 +1,70 @@
+name: boosta-test-task
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres_boosta_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      POSTGRES_DB: ${DB_NAME:-app}
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    volumes:
+      - postgres_data_boosta_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: [ 'CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}' ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend_boosta_prod
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      DB_NAME: ${DB_NAME:-app}
+      DB_MIGRATIONS_RUN: 'true'
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 16 characters)}
+      JWT_TTL: ${JWT_TTL:-604800}
+      CORS_ORIGIN: ${APP_URL:-http://localhost:3001}
+      # Set to true when the app is served over HTTPS.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      COOKIE_SAMESITE: lax
+    expose:
+      - '3000'
+    healthcheck:
+      test: [ 'CMD', 'node', '-e', "fetch('http://localhost:3000/quizzes/current').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))" ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked into the `/api/*` rewrite at build time, and used by serverFetch at runtime.
+        BACKEND_URL: http://backend:3000
+    container_name: frontend_boosta_prod
+    restart: unless-stopped
+    ports:
+      - '${FRONTEND_PORT:-3001}:3001'
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data_boosta_prod:

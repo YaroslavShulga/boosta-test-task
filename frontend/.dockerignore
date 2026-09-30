@@ -1,0 +1,10 @@
+node_modules
+.next
+.env*
+!.env.example
+*.tsbuildinfo
+npm-debug.log*
+
+# Docker build context: local-only files
+.claude
+README.md
